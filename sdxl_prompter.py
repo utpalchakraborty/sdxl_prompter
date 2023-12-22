@@ -163,7 +163,16 @@ def init_ui() -> Blocks:
                     with gr.Column(scale=1, variant="compact"):
                         randomize_btn = gr.Button("Randomize")
                     with gr.Column(scale=1, variant="compact"):
+                        log_button_1 = gr.Button("Log Prompt")
+                    with gr.Column(scale=1, variant="compact"):
                         send_to_llm_btn = gr.Button("Send to LLM")
+                log_label = gr.Markdown()
+                log_button_1.click(
+                    append_to_log,
+                    inputs=[output_prompt_textbox],
+                    outputs=[log_label],
+                    api_name="Log_Prompt",
+                )
                 generate_btn.click(
                     fn=generate_prompt,
                     inputs=[
@@ -262,9 +271,9 @@ def init_ui() -> Blocks:
                     outputs=[llm_output],
                     api_name="LLM_Prompt",
                 )
-                log_button = gr.Button("Log Prompt")
+                log_button_2 = gr.Button("Log Prompt")
                 log_label = gr.Markdown()
-                log_button.click(
+                log_button_2.click(
                     append_to_log,
                     inputs=[llm_output],
                     outputs=[log_label],
