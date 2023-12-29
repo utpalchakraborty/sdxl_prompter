@@ -79,8 +79,10 @@ def extract_post_instruction(text):
     return parts[1].strip() if len(parts) > 1 else ""
 
 
+@torch.no_grad()
+@torch.inference_mode()
 def generate_from_llm(
-        prompt: str, system_prompt: str, top_p: float, top_k: int, temperature: float
+    prompt: str, system_prompt: str, top_p: float, top_k: int, temperature: float
 ) -> str:
     if not llm:
         init_llm()
@@ -91,13 +93,12 @@ def generate_from_llm(
     llm.model.generation_config.top_k = top_k
     llm.model.generation_config.temperature = temperature
 
-    with torch.inference_mode():
-        thread = Thread(
-            target=lambda: llm(format_prompt(prompt, system_prompt), return_full_text=True)
-        )
-        thread.start()
-        generated_text = ""
-        for new_text in streamer:
-            generated_text += new_text
-            yield generated_text
-        thread.join()
+    thread = Thread(
+        target=lambda: llm(format_prompt(prompt, system_prompt), return_full_text=True)
+    )
+    thread.start()
+    generated_text = ""
+    for new_text in streamer:
+        generated_text += new_text
+        yield generated_text
+    thread.join()

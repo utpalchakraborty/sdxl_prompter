@@ -19,6 +19,7 @@ from gradio_prompter.llm import (
     default_top_k,
     default_temperature,
 )
+from gradio_prompter.sdxl_generate import generate_image
 from gradio_prompter.sdxl_prompt_constants import (
     styles_of_photo_str,
     framing_of_photo_str,
@@ -279,7 +280,22 @@ def init_ui() -> Blocks:
                     outputs=[log_label],
                     api_name="Log_Prompt",
                 )
-
+            with gr.TabItem("Generate Image", id=3):
+                final_image = gr.Image(
+                    label="Final Image", show_label=True, visible=True, height=768
+                )
+                image_prompt = gr.Textbox(
+                    label="Image Prompt", lines=5, show_copy_button=True
+                )
+                image_generate_btn = gr.Button("Generate")
+                image_generate_btn.click(
+                    fn=generate_image,
+                    inputs=[
+                        image_prompt,
+                    ],
+                    outputs=[final_image],
+                    api_name="Image_Generate",
+                )
         send_to_llm_btn.click(
             fn=change_tab_to_llm,
             inputs=[output_prompt_textbox],
