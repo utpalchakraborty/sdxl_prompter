@@ -281,12 +281,13 @@ def init_ui() -> Blocks:
                     api_name="Log_Prompt",
                 )
             with gr.TabItem("Generate Image", id=3):
-                final_image = gr.Image(
+                final_image = gr.Gallery(
                     label="Final Image",
                     show_label=True,
                     visible=True,
-                    height=512,
-                    interactive=False,
+                    height=1024,
+                    object_fit="contain",
+                    show_download_button=True,
                 )
                 image_prompt = gr.Textbox(
                     label="Image Prompt", lines=3, show_copy_button=True
