@@ -1,7 +1,15 @@
 import torch
 from diffusers import StableDiffusionXLPipeline
+from dotenv import dotenv_values
+from loguru import logger
 
 from gradio_prompter.upscaler.esrgan_model import UpscalerESRGAN
+
+config = dotenv_values(".env")
+sdxl_model_path = config["SDXL_MODEL_PATH"]
+upscaler_model_path = config["UPSCALER_MODEL_PATH"]
+logger.info(f"SDXL model path: {sdxl_model_path}")
+logger.info(f"Upscaler model path: {upscaler_model_path}")
 
 cache_dir = None
 force_download = False
@@ -10,6 +18,7 @@ proxies = "proxies"
 token = "token"
 local_files_only = False
 revision = None
+
 
 load_config_kwargs = {
     "cache_dir": cache_dir,
@@ -24,7 +33,7 @@ load_config_kwargs = {
 
 def load_pipeline():
     return StableDiffusionXLPipeline.from_single_file(
-        "H:\\ai\\stable-diffusion-webui\\models\\Stable-diffusion\\SDXL\\juggernautXL_v7Rundiffusion.safetensors",
+        sdxl_model_path,
         torch_dtype=torch.float16,
     ).to("cuda")
 
@@ -38,18 +47,25 @@ upscaler = None
 def generate_image(
     prompt: str, negative_prompt: str = None, guidance_scale: float = 7.0
 ):
+    logger.info(
+        f"Generating image with prompt: {prompt} and -ve prompt: {negative_prompt} and guidance scale: {guidance_scale}"
+    )
     global pipeline, upscaler
     if pipeline is None:
+        logger.info("Loading pipeline...")
         pipeline = load_pipeline()
     if upscaler is None:
+        logger.info("Loading upscaler...")
         upscaler = UpscalerESRGAN()
 
+    logger.info("Generating image...")
     original = pipeline(
         prompt=prompt, negative_prompt=negative_prompt, guidance_scale=guidance_scale
     ).images[0]
 
+    logger.info("Upscaling image...")
     return upscaler.upscale(
         original,
         1.5,
-        "H:\\ai\\stable-diffusion-webui\\models\\ESRGAN\\4x-UltraSharp.pth",
+        upscaler_model_path,
     )

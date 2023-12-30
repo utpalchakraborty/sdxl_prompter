@@ -1,6 +1,6 @@
 from PIL import Image
 
-from gradio_prompter.esrgan_model import UpscalerESRGAN
+from gradio_prompter.upscaler.esrgan_model import UpscalerESRGAN
 
 original = Image.open("test.png")
 print(original.size)
