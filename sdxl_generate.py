@@ -1,5 +1,5 @@
 import torch
-from PIL import ImageFilter
+from PIL import ImageEnhance
 from diffusers import StableDiffusionXLPipeline
 from dotenv import dotenv_values
 from loguru import logger
@@ -49,9 +49,12 @@ pipeline = None
 upscaler = None
 
 
-def sharpen(img):
+def enhance(img):
     logger.info("Sharpening image...")
-    return img.filter(ImageFilter.SHARPEN)
+    img = ImageEnhance.Sharpness(img).enhance(1.25)
+    logger.info("Increasing contrast...")
+    img = ImageEnhance.Contrast(img).enhance(1.25)
+    return img
 
 
 @torch.no_grad()
@@ -77,7 +80,7 @@ def generate_image(
     logger.info("Upscaling image...")
     # return list for gallery
     return [
-        sharpen(
+        enhance(
             upscaler.upscale(
                 original,
                 1.5,
