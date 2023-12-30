@@ -58,7 +58,9 @@ def enhance(img):
     return img
 
 
-def create_image_data(prompt, negative_prompt, guidance_scale, num_inference_steps):
+def create_image_data(
+    prompt, negative_prompt, guidance_scale, num_inference_steps, seed
+):
     # d = [
     #     ("Prompt", task["log_positive_prompt"]),
     #     ("Negative Prompt", task["log_negative_prompt"]),
@@ -90,6 +92,7 @@ def create_image_data(prompt, negative_prompt, guidance_scale, num_inference_ste
         ("Negative Prompt", negative_prompt),
         ("Guidance Scale", guidance_scale),
         ("Inference Steps", num_inference_steps),
+        ("Seed", seed),
     ]
 
 
@@ -100,9 +103,16 @@ def generate_image(
     negative_prompt: str = None,
     guidance_scale: float = 7.0,
     num_inference_steps: int = 50,
+    seed: int = -1,
 ):
+    if seed == -1:
+        generator = torch.Generator(device="cuda")
+        seed = generator.initial_seed()
+    else:
+        generator = torch.Generator(device="cuda").manual_seed(seed)
     logger.info(
-        f"Generating image with prompt: {prompt} and -ve prompt: {negative_prompt} and guidance scale: {guidance_scale}"
+        f"Generating image with prompt: {prompt}, -ve prompt: {negative_prompt}, guidance scale: {guidance_scale}, "
+        f"seed: {seed}"
     )
     global pipeline, upscaler
     if pipeline is None:
@@ -117,8 +127,8 @@ def generate_image(
         negative_prompt=negative_prompt,
         guidance_scale=guidance_scale,
         num_inference_steps=num_inference_steps,
+        generator=generator,
     )
-    logger.info(sdxl_output)
     sdxl_output_img = sdxl_output.images[0]
 
     logger.info("Upscaling image...")
@@ -133,7 +143,9 @@ def generate_image(
     logger.info("Saving image...")
     log(
         img,
-        create_image_data(prompt, negative_prompt, guidance_scale, num_inference_steps),
+        create_image_data(
+            prompt, negative_prompt, guidance_scale, num_inference_steps, seed
+        ),
     )
     # return list for gallery
 

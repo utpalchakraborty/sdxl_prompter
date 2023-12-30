@@ -310,9 +310,15 @@ def init_ui() -> Blocks:
                                 value=50,
                                 info="Higher value means more detailed image, but also more artifacts.",
                             )
+                        with gr.Row():
+                            seed_textbox = gr.Number(
+                                label="Seed", value=-1, precision=0
+                            )
                 with gr.Row():
                     image_prompt = gr.Textbox(
-                        label="Image Prompt", lines=3, show_copy_button=True
+                        label="Image Prompt",
+                        lines=3,
+                        show_copy_button=True,
                     )
                 with gr.Row():
                     image_prompt_negative = gr.Textbox(
@@ -330,6 +336,7 @@ def init_ui() -> Blocks:
                         image_prompt_negative,
                         guidance_scale,
                         steps_scale,
+                        seed_textbox,
                     ],
                     outputs=[final_image],
                     api_name="Image_Generate",
