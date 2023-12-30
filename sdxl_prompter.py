@@ -281,23 +281,46 @@ def init_ui() -> Blocks:
                     api_name="Log_Prompt",
                 )
             with gr.TabItem("Generate Image", id=3):
-                final_image = gr.Gallery(
-                    label="Final Image",
-                    show_label=True,
-                    visible=True,
-                    height=1024,
-                    object_fit="contain",
-                    show_download_button=True,
-                )
-                image_prompt = gr.Textbox(
-                    label="Image Prompt", lines=3, show_copy_button=True
-                )
-                image_prompt_negative = gr.Textbox(
-                    label="Negative Prompt",
-                    lines=2,
-                    show_copy_button=False,
-                    value="ugly, deformed",
-                )
+                with gr.Row():
+                    with gr.Column(scale=3, variant="compact"):
+                        final_image = gr.Gallery(
+                            label="Final Image",
+                            show_label=True,
+                            visible=True,
+                            height=1024,
+                            object_fit="contain",
+                            show_download_button=True,
+                        )
+                    with gr.Column(scale=1, variant="compact"):
+                        with gr.Row():
+                            guidance_scale = gr.Slider(
+                                label="Guidance Scale",
+                                minimum=1.0,
+                                maximum=15,
+                                step=0.01,
+                                value=7.0,
+                                info="Higher value means style is cleaner, vivider, and more artistic.",
+                            )
+                        with gr.Row():
+                            steps_scale = gr.Slider(
+                                label="Steps",
+                                minimum=1.0,
+                                maximum=60,
+                                step=1,
+                                value=50,
+                                info="Higher value means more detailed image, but also more artifacts.",
+                            )
+                with gr.Row():
+                    image_prompt = gr.Textbox(
+                        label="Image Prompt", lines=3, show_copy_button=True
+                    )
+                with gr.Row():
+                    image_prompt_negative = gr.Textbox(
+                        label="Negative Prompt",
+                        lines=2,
+                        show_copy_button=False,
+                        value="ugly, deformed",
+                    )
 
                 image_generate_btn = gr.Button("Generate")
                 image_generate_btn.click(
@@ -305,6 +328,8 @@ def init_ui() -> Blocks:
                     inputs=[
                         image_prompt,
                         image_prompt_negative,
+                        guidance_scale,
+                        steps_scale,
                     ],
                     outputs=[final_image],
                     api_name="Image_Generate",

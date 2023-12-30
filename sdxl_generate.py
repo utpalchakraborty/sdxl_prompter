@@ -131,7 +131,10 @@ def generate_image(
         )
     )
     logger.info("Saving image...")
-    log(img, create_image_data(prompt, negative_prompt, guidance_scale))
+    log(
+        img,
+        create_image_data(prompt, negative_prompt, guidance_scale, num_inference_steps),
+    )
     # return list for gallery
 
     return [img]
