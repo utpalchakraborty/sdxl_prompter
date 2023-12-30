@@ -4,6 +4,7 @@ from diffusers import StableDiffusionXLPipeline
 from dotenv import dotenv_values
 from loguru import logger
 
+from gradio_prompter.private_logger import log
 from gradio_prompter.upscaler.esrgan_model import UpscalerESRGAN
 
 config = dotenv_values(".env")
@@ -57,10 +58,48 @@ def enhance(img):
     return img
 
 
+def create_image_data(prompt, negative_prompt, guidance_scale, num_inference_steps):
+    # d = [
+    #     ("Prompt", task["log_positive_prompt"]),
+    #     ("Negative Prompt", task["log_negative_prompt"]),
+    #     ("Fooocus V2 Expansion", task["expansion"]),
+    #     ("Styles", str(raw_style_selections)),
+    #     ("Performance", performance_selection),
+    #     ("Resolution", str((width, height))),
+    #     ("Sharpness", sharpness),
+    #     ("Guidance Scale", guidance_scale),
+    #     (
+    #         "ADM Guidance",
+    #         str(
+    #             (
+    #                 modules.patch.positive_adm_scale,
+    #                 modules.patch.negative_adm_scale,
+    #                 modules.patch.adm_scaler_end,
+    #             )
+    #         ),
+    #     ),
+    #     ("Base Model", base_model_name),
+    #     ("Refiner Model", refiner_model_name),
+    #     ("Refiner Switch", refiner_switch),
+    #     ("Sampler", sampler_name),
+    #     ("Scheduler", scheduler_name),
+    #     ("Seed", task["task_seed"]),
+    # ]
+    return [
+        ("Prompt", prompt),
+        ("Negative Prompt", negative_prompt),
+        ("Guidance Scale", guidance_scale),
+        ("Inference Steps", num_inference_steps),
+    ]
+
+
 @torch.no_grad()
 @torch.inference_mode()
 def generate_image(
-    prompt: str, negative_prompt: str = None, guidance_scale: float = 7.0
+    prompt: str,
+    negative_prompt: str = None,
+    guidance_scale: float = 7.0,
+    num_inference_steps: int = 50,
 ):
     logger.info(
         f"Generating image with prompt: {prompt} and -ve prompt: {negative_prompt} and guidance scale: {guidance_scale}"
@@ -73,18 +112,26 @@ def generate_image(
         upscaler = UpscalerESRGAN()
 
     logger.info("Generating image...")
-    original = pipeline(
-        prompt=prompt, negative_prompt=negative_prompt, guidance_scale=guidance_scale
-    ).images[0]
+    sdxl_output = pipeline(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        guidance_scale=guidance_scale,
+        num_inference_steps=num_inference_steps,
+    )
+    logger.info(sdxl_output)
+    sdxl_output_img = sdxl_output.images[0]
 
     logger.info("Upscaling image...")
-    # return list for gallery
-    return [
-        enhance(
-            upscaler.upscale(
-                original,
-                1.5,
-                upscaler_model_path,
-            )
+
+    img = enhance(
+        upscaler.upscale(
+            sdxl_output_img,
+            1.5,
+            upscaler_model_path,
         )
-    ]
+    )
+    logger.info("Saving image...")
+    log(img, create_image_data(prompt, negative_prompt, guidance_scale))
+    # return list for gallery
+
+    return [img]
