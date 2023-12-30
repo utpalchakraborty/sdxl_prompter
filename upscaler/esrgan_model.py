@@ -1,12 +1,14 @@
+import math
 import sys
 from abc import abstractmethod
+from collections import namedtuple
 
 import PIL
 import numpy as np
 import torch
 from PIL import Image
 
-from gradio_prompter.esrgan_model_arch import RRDBNet, SRVGGNetCompact
+from gradio_prompter.upscaler.esrgan_model_arch import RRDBNet, SRVGGNetCompact
 
 LANCZOS = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
 
@@ -199,7 +201,7 @@ class UpscalerESRGAN(Upscaler):
             print(f"Unable to load ESRGAN model {selected_model}: {e}", file=sys.stderr)
             return img
         model.to("cuda")
-        img = upscale_without_tiling(model, img)
+        img = esrgan_upscale(model, img)
         return img
 
     def load_model(self, path: str):
@@ -259,3 +261,124 @@ def upscale_without_tiling(model, img):
     output = output.astype(np.uint8)
     output = output[:, :, ::-1]
     return Image.fromarray(output, "RGB")
+
+
+Grid = namedtuple(
+    "Grid", ["tiles", "tile_w", "tile_h", "image_w", "image_h", "overlap"]
+)
+
+
+def split_grid(image, tile_w=512, tile_h=512, overlap=64):
+    w = image.width
+    h = image.height
+
+    non_overlap_width = tile_w - overlap
+    non_overlap_height = tile_h - overlap
+
+    cols = math.ceil((w - overlap) / non_overlap_width)
+    rows = math.ceil((h - overlap) / non_overlap_height)
+
+    dx = (w - tile_w) / (cols - 1) if cols > 1 else 0
+    dy = (h - tile_h) / (rows - 1) if rows > 1 else 0
+
+    grid = Grid([], tile_w, tile_h, w, h, overlap)
+    for row in range(rows):
+        row_images = []
+
+        y = int(row * dy)
+
+        if y + tile_h >= h:
+            y = h - tile_h
+
+        for col in range(cols):
+            x = int(col * dx)
+
+            if x + tile_w >= w:
+                x = w - tile_w
+
+            tile = image.crop((x, y, x + tile_w, y + tile_h))
+
+            row_images.append([x, tile_w, tile])
+
+        grid.tiles.append([y, tile_h, row_images])
+
+    return grid
+
+
+def combine_grid(grid):
+    def make_mask_image(r):
+        r = r * 255 / grid.overlap
+        r = r.astype(np.uint8)
+        return Image.fromarray(r, "L")
+
+    mask_w = make_mask_image(
+        np.arange(grid.overlap, dtype=np.float32)
+        .reshape((1, grid.overlap))
+        .repeat(grid.tile_h, axis=0)
+    )
+    mask_h = make_mask_image(
+        np.arange(grid.overlap, dtype=np.float32)
+        .reshape((grid.overlap, 1))
+        .repeat(grid.image_w, axis=1)
+    )
+
+    combined_image = Image.new("RGB", (grid.image_w, grid.image_h))
+    for y, h, row in grid.tiles:
+        combined_row = Image.new("RGB", (grid.image_w, h))
+        for x, w, tile in row:
+            if x == 0:
+                combined_row.paste(tile, (0, 0))
+                continue
+
+            combined_row.paste(tile.crop((0, 0, grid.overlap, h)), (x, 0), mask=mask_w)
+            combined_row.paste(
+                tile.crop((grid.overlap, 0, w, h)), (x + grid.overlap, 0)
+            )
+
+        if y == 0:
+            combined_image.paste(combined_row, (0, 0))
+            continue
+
+        combined_image.paste(
+            combined_row.crop((0, 0, combined_row.width, grid.overlap)),
+            (0, y),
+            mask=mask_h,
+        )
+        combined_image.paste(
+            combined_row.crop((0, grid.overlap, combined_row.width, h)),
+            (0, y + grid.overlap),
+        )
+
+    return combined_image
+
+
+ESRGAN_tile = 192
+ESRGAN_tile_overlap = 8
+
+
+def esrgan_upscale(model, img):
+    grid = split_grid(img, ESRGAN_tile, ESRGAN_tile, ESRGAN_tile_overlap)
+    newtiles = []
+    scale_factor = 1
+
+    for y, h, row in grid.tiles:
+        newrow = []
+        for tiledata in row:
+            x, w, tile = tiledata
+
+            output = upscale_without_tiling(model, tile)
+            scale_factor = output.width // tile.width
+
+            newrow.append([x * scale_factor, w * scale_factor, output])
+        newtiles.append([y * scale_factor, h * scale_factor, newrow])
+
+    newgrid = Grid(
+        newtiles,
+        grid.tile_w * scale_factor,
+        grid.tile_h * scale_factor,
+        grid.image_w * scale_factor,
+        grid.image_h * scale_factor,
+        grid.overlap * scale_factor,
+    )
+    output = combine_grid(newgrid)
+    return output

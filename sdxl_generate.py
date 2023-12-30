@@ -1,6 +1,8 @@
 import torch
 from diffusers import StableDiffusionXLPipeline
 
+from gradio_prompter.upscaler.esrgan_model import UpscalerESRGAN
+
 cache_dir = None
 force_download = False
 resume_download = "resume_download"
@@ -21,18 +23,33 @@ load_config_kwargs = {
 
 
 def load_pipeline():
-    return StableDiffusionXLPipeline.from_pretrained(
-        "dataautogpt3/OpenDalleV1.1", torch_dtype=torch.float16
+    return StableDiffusionXLPipeline.from_single_file(
+        "H:\\ai\\stable-diffusion-webui\\models\\Stable-diffusion\\SDXL\\juggernautXL_v7Rundiffusion.safetensors",
+        torch_dtype=torch.float16,
     ).to("cuda")
 
 
 pipeline = None
+upscaler = None
 
 
 @torch.no_grad()
 @torch.inference_mode()
-def generate_image(prompt: str):
-    global pipeline
+def generate_image(
+    prompt: str, negative_prompt: str = None, guidance_scale: float = 7.0
+):
+    global pipeline, upscaler
     if pipeline is None:
         pipeline = load_pipeline()
-    return pipeline(prompt).images[0]
+    if upscaler is None:
+        upscaler = UpscalerESRGAN()
+
+    original = pipeline(
+        prompt=prompt, negative_prompt=negative_prompt, guidance_scale=guidance_scale
+    ).images[0]
+
+    return upscaler.upscale(
+        original,
+        1.5,
+        "H:\\ai\\stable-diffusion-webui\\models\\ESRGAN\\4x-UltraSharp.pth",
+    )

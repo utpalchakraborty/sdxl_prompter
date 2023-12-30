@@ -282,16 +282,28 @@ def init_ui() -> Blocks:
                 )
             with gr.TabItem("Generate Image", id=3):
                 final_image = gr.Image(
-                    label="Final Image", show_label=True, visible=True, height=768
+                    label="Final Image",
+                    show_label=True,
+                    visible=True,
+                    height=512,
+                    interactive=False,
                 )
                 image_prompt = gr.Textbox(
-                    label="Image Prompt", lines=5, show_copy_button=True
+                    label="Image Prompt", lines=3, show_copy_button=True
                 )
+                image_prompt_negative = gr.Textbox(
+                    label="Negative Prompt",
+                    lines=2,
+                    show_copy_button=False,
+                    value="ugly, deformed",
+                )
+
                 image_generate_btn = gr.Button("Generate")
                 image_generate_btn.click(
                     fn=generate_image,
                     inputs=[
                         image_prompt,
+                        image_prompt_negative,
                     ],
                     outputs=[final_image],
                     api_name="Image_Generate",
