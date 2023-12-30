@@ -26,7 +26,7 @@ def get_current_html_path():
     return html_name
 
 
-def log(img: PIL.Image, dic):
+def log(img: PIL.Image, dic: list[tuple[str, str]]):
     date_string, local_temp_filename, only_name = generate_temp_filename()
     os.makedirs(os.path.dirname(local_temp_filename), exist_ok=True)
     img.save(local_temp_filename, "PNG")
