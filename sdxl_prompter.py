@@ -317,8 +317,8 @@ def init_ui() -> Blocks:
                                     minimum=0.0,
                                     maximum=2,
                                     step=0.1,
-                                    value=0.3,
-                                    info="Higher value means more sharpened image.",
+                                    value=1.1,
+                                    info="Higher value means more sharpened image. 1 = Original Image",
                                 )
                             with gr.Row():
                                 contrast_scale = gr.Slider(
@@ -326,8 +326,8 @@ def init_ui() -> Blocks:
                                     minimum=0.0,
                                     maximum=2,
                                     step=0.1,
-                                    value=0.2,
-                                    info="Higher value means more image contrast.",
+                                    value=1.1,
+                                    info="Higher value means more image contrast. 1 = Original Image",
                                 )
                             with gr.Row():
                                 upscale_by = gr.Slider(
