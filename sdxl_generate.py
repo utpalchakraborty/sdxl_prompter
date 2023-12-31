@@ -27,7 +27,6 @@ refiner_model_name = os.path.basename(refiner_model_path)
 base_lora_name = os.path.basename(lora_path)
 refiner_switch = 0.75
 refiner_cfg = 3.5
-use_refiner = False
 
 cache_dir = None
 force_download = False
@@ -88,7 +87,7 @@ def enhance(img: PIL.Image) -> PIL.Image:
 
 
 def create_image_data(
-    prompt, negative_prompt, guidance_scale, num_inference_steps, seed
+    prompt, negative_prompt, guidance_scale, num_inference_steps, seed, use_refiner
 ) -> list[tuple[str, str]]:
     # d = [
     #     ("Prompt", task["log_positive_prompt"]),
@@ -143,6 +142,7 @@ def generate_image(
     guidance_scale: float = 7.0,
     num_inference_steps: int = 50,
     seed: int = -1,
+    use_refiner: bool = False,
 ):
     if seed == -1:
         seed = torch.Generator(device="cuda").seed()
@@ -152,7 +152,7 @@ def generate_image(
         f"Generating image with prompt: {prompt}, -ve prompt: {negative_prompt}, guidance scale: {guidance_scale}, "
         f"seed: {seed}"
     )
-    global pipeline, upscaler, refiner_pipeline, refiner_switch, use_refiner
+    global pipeline, upscaler, refiner_pipeline, refiner_switch
     if pipeline is None:
         pipeline = load_pipeline()
     if upscaler is None:
@@ -203,7 +203,12 @@ def generate_image(
     log(
         img,
         create_image_data(
-            prompt, negative_prompt, guidance_scale, num_inference_steps, seed
+            prompt,
+            negative_prompt,
+            guidance_scale,
+            num_inference_steps,
+            seed,
+            use_refiner,
         ),
     )
     # return list for gallery

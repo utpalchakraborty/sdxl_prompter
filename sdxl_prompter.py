@@ -298,7 +298,7 @@ def init_ui() -> Blocks:
                                 minimum=1.0,
                                 maximum=15,
                                 step=0.01,
-                                value=7.0,
+                                value=3.5,
                                 info="Higher value means style is cleaner, vivider, and more artistic.",
                             )
                         with gr.Row():
@@ -307,12 +307,16 @@ def init_ui() -> Blocks:
                                 minimum=1.0,
                                 maximum=60,
                                 step=1,
-                                value=50,
+                                value=60,
                                 info="Higher value means more detailed image, but also more artifacts.",
                             )
                         with gr.Row():
                             seed_textbox = gr.Number(
                                 label="Seed", value=-1, precision=0
+                            )
+                        with gr.Row():
+                            use_refiner_checkbox = gr.Checkbox(
+                                label="Use Refiner", value=True, interactive=True
                             )
                 with gr.Row():
                     image_prompt = gr.Textbox(
@@ -337,6 +341,7 @@ def init_ui() -> Blocks:
                         guidance_scale,
                         steps_scale,
                         seed_textbox,
+                        use_refiner_checkbox,
                     ],
                     outputs=[final_image],
                     api_name="Image_Generate",
