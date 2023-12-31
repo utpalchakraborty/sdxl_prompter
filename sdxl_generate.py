@@ -78,26 +78,33 @@ upscaler = None
 refiner_pipeline = None
 
 
-def enhance(img: PIL.Image) -> PIL.Image:
-    logger.info("Sharpening image...")
-    img = ImageEnhance.Sharpness(img).enhance(1.25)
-    logger.info("Increasing contrast...")
-    img = ImageEnhance.Contrast(img).enhance(1.25)
+def enhance(img: PIL.Image, sharpness: float, contrast: float) -> PIL.Image:
+    if sharpness > 0:
+        logger.info("Sharpening image...")
+        img = ImageEnhance.Sharpness(img).enhance(1.25)
+    if contrast > 0:
+        logger.info("Increasing contrast...")
+        img = ImageEnhance.Contrast(img).enhance(1.25)
     return img
 
 
 def create_image_data(
-    prompt, negative_prompt, guidance_scale, num_inference_steps, seed, use_refiner
+    prompt,
+    negative_prompt,
+    guidance_scale,
+    num_inference_steps,
+    seed,
+    use_refiner,
+    sharpness,
+    contrast,
+    upscale_by,
 ) -> list[tuple[str, str]]:
     # d = [
-    #     ("Prompt", task["log_positive_prompt"]),
-    #     ("Negative Prompt", task["log_negative_prompt"]),
+
     #     ("Fooocus V2 Expansion", task["expansion"]),
     #     ("Styles", str(raw_style_selections)),
     #     ("Performance", performance_selection),
     #     ("Resolution", str((width, height))),
-    #     ("Sharpness", sharpness),
-    #     ("Guidance Scale", guidance_scale),
     #     (
     #         "ADM Guidance",
     #         str(
@@ -113,7 +120,6 @@ def create_image_data(
     #     ("Refiner Switch", refiner_switch),
     #     ("Sampler", sampler_name),
     #     ("Scheduler", scheduler_name),
-    #     ("Seed", task["task_seed"]),
     # ]
     data = [
         ("Prompt", prompt),
@@ -123,6 +129,9 @@ def create_image_data(
         ("Seed", seed),
         ("Base Model", base_model_name),
         ("lora ", base_lora_name),
+        ("Sharpness", sharpness),
+        ("Contrast", contrast),
+        ("Upscaled", upscale_by),
     ]
     if use_refiner:
         data.extend(
@@ -143,6 +152,9 @@ def generate_image(
     num_inference_steps: int = 50,
     seed: int = -1,
     use_refiner: bool = False,
+    sharpness: float = 0,
+    contrast: float = 0,
+    upscale_by: float = 1.5,
 ):
     if seed == -1:
         seed = torch.Generator(device="cuda").seed()
@@ -155,7 +167,7 @@ def generate_image(
     global pipeline, upscaler, refiner_pipeline, refiner_switch
     if pipeline is None:
         pipeline = load_pipeline()
-    if upscaler is None:
+    if upscaler is None and upscale_by > 1:
         logger.info("Loading upscaler...")
         upscaler = UpscalerESRGAN()
     if use_refiner and refiner_pipeline is None:
@@ -190,18 +202,22 @@ def generate_image(
             vae=True,
         ).images[0]
 
-    logger.info("Upscaling image...")
-
-    img = enhance(
-        upscaler.upscale(
+    if upscale_by > 1:
+        logger.info("Upscaling image...")
+        sdxl_output_img = upscaler.upscale(
             sdxl_output_img,
-            1.5,
+            upscale_by,
             upscaler_model_path,
         )
+
+    sdxl_output_img = enhance(
+        sdxl_output_img,
+        sharpness,
+        contrast,
     )
     logger.info("Saving image...")
     log(
-        img,
+        sdxl_output_img,
         create_image_data(
             prompt,
             negative_prompt,
@@ -209,8 +225,11 @@ def generate_image(
             num_inference_steps,
             seed,
             use_refiner,
+            sharpness,
+            contrast,
+            upscale_by,
         ),
     )
     # return list for gallery
 
-    return [img]
+    return [sdxl_output_img]

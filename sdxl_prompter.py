@@ -311,12 +311,39 @@ def init_ui() -> Blocks:
                                 info="Higher value means more detailed image, but also more artifacts.",
                             )
                         with gr.Row():
+                            sharpen_scale = gr.Slider(
+                                label="Sharpen",
+                                minimum=0.0,
+                                maximum=2,
+                                step=0.1,
+                                value=0.3,
+                                info="Higher value means more sharpened image.",
+                            )
+                        with gr.Row():
+                            contrast_scale = gr.Slider(
+                                label="Contrast",
+                                minimum=0.0,
+                                maximum=2,
+                                step=0.1,
+                                value=0.2,
+                                info="Higher value means more image contrast.",
+                            )
+                        with gr.Row():
+                            upscale_by = gr.Slider(
+                                label="Upscale",
+                                minimum=1,
+                                maximum=4,
+                                step=0.5,
+                                value=1.5,
+                                info="Higher value means larger image.",
+                            )
+                        with gr.Row():
                             seed_textbox = gr.Number(
                                 label="Seed", value=-1, precision=0
                             )
                         with gr.Row():
                             use_refiner_checkbox = gr.Checkbox(
-                                label="Use Refiner", value=True, interactive=True
+                                label="Use Refiner", value=False, interactive=True
                             )
                 with gr.Row():
                     image_prompt = gr.Textbox(
@@ -342,6 +369,9 @@ def init_ui() -> Blocks:
                         steps_scale,
                         seed_textbox,
                         use_refiner_checkbox,
+                        sharpen_scale,
+                        contrast_scale,
+                        upscale_by,
                     ],
                     outputs=[final_image],
                     api_name="Image_Generate",
