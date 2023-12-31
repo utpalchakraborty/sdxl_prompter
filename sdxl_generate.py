@@ -81,10 +81,10 @@ refiner_pipeline = None
 def enhance(img: PIL.Image, sharpness: float, contrast: float) -> PIL.Image:
     if sharpness > 0:
         logger.info("Sharpening image...")
-        img = ImageEnhance.Sharpness(img).enhance(1.25)
+        img = ImageEnhance.Sharpness(img).enhance(sharpness)
     if contrast > 0:
         logger.info("Increasing contrast...")
-        img = ImageEnhance.Contrast(img).enhance(1.25)
+        img = ImageEnhance.Contrast(img).enhance(contrast)
     return img
 
 
