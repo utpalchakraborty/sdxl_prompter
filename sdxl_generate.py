@@ -8,6 +8,7 @@ from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipelin
 from dotenv import dotenv_values
 from loguru import logger
 
+from gradio_prompter.generation_data import GenerationData
 from gradio_prompter.private_logger import log
 from gradio_prompter.upscaler.esrgan_model import UpscalerESRGAN
 
@@ -25,7 +26,6 @@ logger.info(f"Refiner model path: {refiner_model_path}")
 base_model_name = os.path.basename(sdxl_model_path)
 refiner_model_name = os.path.basename(refiner_model_path)
 base_lora_name = os.path.basename(lora_path)
-refiner_switch = 0.75
 refiner_cfg = 3.5
 
 cache_dir = None
@@ -89,21 +89,12 @@ def enhance(img: PIL.Image, sharpness: float, contrast: float) -> PIL.Image:
 
 
 def create_image_data(
-    prompt,
-    negative_prompt,
-    guidance_scale,
-    num_inference_steps,
-    seed,
-    use_refiner,
-    sharpness,
-    contrast,
-    upscale_by,
+    generation_data: GenerationData,
 ) -> list[tuple[str, str]]:
     # d = [
 
     #     ("Fooocus V2 Expansion", task["expansion"]),
     #     ("Styles", str(raw_style_selections)),
-    #     ("Performance", performance_selection),
     #     ("Resolution", str((width, height))),
     #     (
     #         "ADM Guidance",
@@ -115,36 +106,101 @@ def create_image_data(
     #             )
     #         ),
     #     ),
-    #     ("Base Model", base_model_name),
-    #     ("Refiner Model", refiner_model_name),
-    #     ("Refiner Switch", refiner_switch),
     #     ("Sampler", sampler_name),
     #     ("Scheduler", scheduler_name),
     # ]
     data = [
-        ("Prompt", prompt),
-        ("Negative Prompt", negative_prompt),
-        ("Guidance Scale", guidance_scale),
-        ("Inference Steps", num_inference_steps),
-        ("Seed", seed),
-        ("Base Model", base_model_name),
-        ("lora ", base_lora_name),
-        ("Sharpness", sharpness),
-        ("Contrast", contrast),
-        ("Upscaled", upscale_by),
+        ("Prompt", generation_data.prompt),
+        ("Negative Prompt", generation_data.negative_prompt),
+        ("Guidance Scale", generation_data.guidance_scale),
+        ("Inference Steps", generation_data.num_inference_steps),
+        ("Seed", generation_data.seed),
+        ("Base Model", generation_data.base_model),
+        ("lora ", generation_data.lora),
+        ("Sharpness", generation_data.sharpness),
+        ("Contrast", generation_data.contrast),
+        ("Upscaled", generation_data.upscale_by),
     ]
-    if use_refiner:
+    if generation_data.use_refiner:
         data.extend(
             [
-                ("Refiner Model", refiner_model_name),
-                ("Refiner Switch", refiner_switch),
+                ("Refiner Model", generation_data.refiner_model),
+                ("Refiner Switch", generation_data.refiner_switch),
             ]
         )
+    data.append(("json", generation_data.model_dump_json()))
     return data
 
 
 @torch.no_grad()
 @torch.inference_mode()
+def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
+    global pipeline, upscaler, refiner_pipeline
+    generator = torch.Generator(device="cuda").manual_seed(generation_data.seed)
+    if pipeline is None:
+        pipeline = load_pipeline()
+    if upscaler is None and generation_data.upscale_by > 1:
+        logger.info("Loading upscaler...")
+        upscaler = UpscalerESRGAN()
+    if generation_data.use_refiner and refiner_pipeline is None:
+        refiner_pipeline = load_refiner()
+
+    logger.info("Generating image...")
+    sdxl_output = pipeline(
+        prompt=generation_data.prompt,
+        negative_prompt=generation_data.negative_prompt,
+        guidance_scale=generation_data.guidance_scale,
+        num_inference_steps=generation_data.num_inference_steps,
+        generator=generator,
+        output_type="latent" if generation_data.use_refiner else "pil",
+        denoising_end=generation_data.refiner_switch
+        if generation_data.use_refiner
+        else 1.0,
+    )
+    sdxl_output_img = sdxl_output.images[0]
+
+    if generation_data.use_refiner:
+        logger.info("Refining image...")
+        global refiner_cfg
+        refiner_steps = math.ceil(
+            generation_data.num_inference_steps * (1 - generation_data.refiner_switch)
+        )
+        sdxl_output_img = refiner_pipeline(
+            prompt=generation_data.prompt,
+            image=sdxl_output_img,
+            negative_prompt=generation_data.negative_prompt,
+            strength=0.3,
+            guidance_scale=refiner_cfg,
+            latents=sdxl_output_img,
+            generator=generator,
+            num_inference_steps=refiner_steps,
+            output_type="pil",
+            vae=True,
+        ).images[0]
+
+    if generation_data.upscale_by > 1:
+        logger.info("Upscaling image...")
+        sdxl_output_img = upscaler.upscale(
+            sdxl_output_img,
+            generation_data.upscale_by,
+            upscaler_model_path,
+        )
+
+    sdxl_output_img = enhance(
+        sdxl_output_img,
+        generation_data.sharpness,
+        generation_data.contrast,
+    )
+    logger.info("Saving image...")
+    log(
+        sdxl_output_img,
+        create_image_data(generation_data),
+    )
+    # return list for gallery
+
+    return [sdxl_output_img]
+
+
 def generate_image(
     prompt: str,
     negative_prompt: str = None,
@@ -159,77 +215,29 @@ def generate_image(
     if seed == -1:
         seed = torch.Generator(device="cuda").seed()
 
-    generator = torch.Generator(device="cuda").manual_seed(seed)
-    logger.info(
-        f"Generating image with prompt: {prompt}, -ve prompt: {negative_prompt}, guidance scale: {guidance_scale}, "
-        f"seed: {seed}"
-    )
-    global pipeline, upscaler, refiner_pipeline, refiner_switch
-    if pipeline is None:
-        pipeline = load_pipeline()
-    if upscaler is None and upscale_by > 1:
-        logger.info("Loading upscaler...")
-        upscaler = UpscalerESRGAN()
-    if use_refiner and refiner_pipeline is None:
-        refiner_pipeline = load_refiner()
-
-    logger.info("Generating image...")
-    sdxl_output = pipeline(
+    generation_data = GenerationData(
         prompt=prompt,
         negative_prompt=negative_prompt,
         guidance_scale=guidance_scale,
         num_inference_steps=num_inference_steps,
-        generator=generator,
-        output_type="latent" if use_refiner else "pil",
-        denoising_end=refiner_switch if use_refiner else 1.0,
+        seed=seed,
+        use_refiner=use_refiner,
+        sharpness=sharpness,
+        contrast=contrast,
+        upscale_by=upscale_by,
+        base_model=base_model_name,
+        lora=base_lora_name,
     )
-    sdxl_output_img = sdxl_output.images[0]
-
     if use_refiner:
-        logger.info("Refining image...")
-        global refiner_cfg
-        refiner_steps = math.ceil(num_inference_steps * (1 - refiner_switch))
-        sdxl_output_img = refiner_pipeline(
-            prompt=prompt,
-            image=sdxl_output_img,
-            negative_prompt=negative_prompt,
-            strength=0.3,
-            guidance_scale=refiner_cfg,
-            latents=sdxl_output_img,
-            generator=generator,
-            num_inference_steps=refiner_steps,
-            output_type="pil",
-            vae=True,
-        ).images[0]
+        generation_data.refiner_model = refiner_model_name
+        generation_data.refiner_switch = refiner_cfg
+    else:
+        generation_data.refiner_model = None
+        generation_data.refiner_switch = None
 
-    if upscale_by > 1:
-        logger.info("Upscaling image...")
-        sdxl_output_img = upscaler.upscale(
-            sdxl_output_img,
-            upscale_by,
-            upscaler_model_path,
-        )
-
-    sdxl_output_img = enhance(
-        sdxl_output_img,
-        sharpness,
-        contrast,
+    logger.info(
+        f"Generating image with generation data: {generation_data.model_dump_json()} "
     )
-    logger.info("Saving image...")
-    log(
-        sdxl_output_img,
-        create_image_data(
-            prompt,
-            negative_prompt,
-            guidance_scale,
-            num_inference_steps,
-            seed,
-            use_refiner,
-            sharpness,
-            contrast,
-            upscale_by,
-        ),
+    return run_sdxl_pipelines(generation_data), generation_data.model_dump_json(
+        indent=2
     )
-    # return list for gallery
-
-    return [sdxl_output_img]

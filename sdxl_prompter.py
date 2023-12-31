@@ -292,72 +292,82 @@ def init_ui() -> Blocks:
                             show_download_button=True,
                         )
                     with gr.Column(scale=1, variant="compact"):
-                        with gr.Row():
-                            guidance_scale = gr.Slider(
-                                label="Guidance Scale",
-                                minimum=1.0,
-                                maximum=15,
-                                step=0.01,
-                                value=3.5,
-                                info="Higher value means style is cleaner, vivider, and more artistic.",
-                            )
-                        with gr.Row():
-                            steps_scale = gr.Slider(
-                                label="Steps",
-                                minimum=1.0,
-                                maximum=60,
-                                step=1,
-                                value=60,
-                                info="Higher value means more detailed image, but also more artifacts.",
-                            )
-                        with gr.Row():
-                            sharpen_scale = gr.Slider(
-                                label="Sharpen",
-                                minimum=0.0,
-                                maximum=2,
-                                step=0.1,
-                                value=0.3,
-                                info="Higher value means more sharpened image.",
-                            )
-                        with gr.Row():
-                            contrast_scale = gr.Slider(
-                                label="Contrast",
-                                minimum=0.0,
-                                maximum=2,
-                                step=0.1,
-                                value=0.2,
-                                info="Higher value means more image contrast.",
-                            )
-                        with gr.Row():
-                            upscale_by = gr.Slider(
-                                label="Upscale",
-                                minimum=1,
-                                maximum=4,
-                                step=0.5,
-                                value=1.5,
-                                info="Higher value means larger image.",
-                            )
-                        with gr.Row():
-                            seed_textbox = gr.Number(
-                                label="Seed", value=-1, precision=0
-                            )
-                        with gr.Row():
-                            use_refiner_checkbox = gr.Checkbox(
-                                label="Use Refiner", value=False, interactive=True
-                            )
-                with gr.Row():
-                    image_prompt = gr.Textbox(
-                        label="Image Prompt",
-                        lines=3,
-                        show_copy_button=True,
-                    )
-                with gr.Row():
-                    image_prompt_negative = gr.Textbox(
-                        label="Negative Prompt",
-                        lines=2,
-                        show_copy_button=False,
-                        value="ugly, deformed",
-                    )
+                        with gr.Group():
+                            with gr.Row():
+                                guidance_scale = gr.Slider(
+                                    label="Guidance Scale",
+                                    minimum=1.0,
+                                    maximum=15,
+                                    step=0.01,
+                                    value=3.5,
+                                    info="Higher value means style is cleaner, vivider, and more artistic.",
+                                )
+                            with gr.Row():
+                                steps_scale = gr.Slider(
+                                    label="Steps",
+                                    minimum=1.0,
+                                    maximum=60,
+                                    step=1,
+                                    value=60,
+                                    info="Higher value means more detailed image, but also more artifacts.",
+                                )
+                            with gr.Row():
+                                sharpen_scale = gr.Slider(
+                                    label="Sharpen",
+                                    minimum=0.0,
+                                    maximum=2,
+                                    step=0.1,
+                                    value=0.3,
+                                    info="Higher value means more sharpened image.",
+                                )
+                            with gr.Row():
+                                contrast_scale = gr.Slider(
+                                    label="Contrast",
+                                    minimum=0.0,
+                                    maximum=2,
+                                    step=0.1,
+                                    value=0.2,
+                                    info="Higher value means more image contrast.",
+                                )
+                            with gr.Row():
+                                upscale_by = gr.Slider(
+                                    label="Upscale",
+                                    minimum=1,
+                                    maximum=4,
+                                    step=0.5,
+                                    value=1.5,
+                                    info="Higher value means larger image.",
+                                )
+                            with gr.Row():
+                                seed_textbox = gr.Number(
+                                    label="Seed", value=-1, precision=0
+                                )
+                            with gr.Row():
+                                use_refiner_checkbox = gr.Checkbox(
+                                    label="Use Refiner", value=False, interactive=True
+                                )
+                            with gr.Row():
+                                image_data_output = gr.Textbox(
+                                    label="Image Data",
+                                    lines=10,
+                                    show_copy_button=True,
+                                    interactive=False,
+                                )
+
+                with gr.Group():
+                    with gr.Row():
+                        image_prompt = gr.Textbox(
+                            label="Image Prompt",
+                            lines=3,
+                            show_copy_button=True,
+                        )
+                    with gr.Row():
+                        image_prompt_negative = gr.Textbox(
+                            label="Negative Prompt",
+                            lines=2,
+                            show_copy_button=True,
+                            value="ugly, deformed",
+                        )
 
                 image_generate_btn = gr.Button("Generate")
                 image_generate_btn.click(
@@ -373,7 +383,7 @@ def init_ui() -> Blocks:
                         contrast_scale,
                         upscale_by,
                     ],
-                    outputs=[final_image],
+                    outputs=[final_image, image_data_output],
                     api_name="Image_Generate",
                 )
         send_to_llm_btn.click(
