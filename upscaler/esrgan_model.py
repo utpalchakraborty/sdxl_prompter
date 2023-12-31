@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from gradio_prompter.upscaler.esrgan_model_arch import RRDBNet, SRVGGNetCompact
+from upscaler.esrgan_model_arch import RRDBNet, SRVGGNetCompact
 
 LANCZOS = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
 

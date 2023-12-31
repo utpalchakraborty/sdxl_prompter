@@ -8,9 +8,9 @@ from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipelin
 from dotenv import dotenv_values
 from loguru import logger
 
-from gradio_prompter.generation_data import GenerationData
-from gradio_prompter.private_logger import log
-from gradio_prompter.upscaler.esrgan_model import UpscalerESRGAN
+from generation_data import GenerationData
+from private_logger import log
+from upscaler.esrgan_model import UpscalerESRGAN
 
 config = dotenv_values(".env")
 sdxl_model_path = config["SDXL_MODEL_PATH"]

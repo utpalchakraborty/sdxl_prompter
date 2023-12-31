@@ -5,22 +5,22 @@ import gradio as gr
 from gradio import Blocks
 from loguru import logger
 
-from gradio_prompter.helper_functions import (
+from helper_functions import (
     select_random_line,
     parse_comma_separated_strings,
     read_file_to_list,
     get_random_element,
     generate_unique_filename,
 )
-from gradio_prompter.llm import (
+from llm import (
     generate_from_llm,
     SYSTEM_PROMPT,
     default_top_p,
     default_top_k,
     default_temperature,
 )
-from gradio_prompter.sdxl_generate import generate_image
-from gradio_prompter.sdxl_prompt_constants import (
+from sdxl_generate import generate_image
+from sdxl_prompt_constants import (
     styles_of_photo_str,
     framing_of_photo_str,
     lighting_of_photo_str,

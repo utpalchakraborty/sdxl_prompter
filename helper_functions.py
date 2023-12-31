@@ -2,7 +2,7 @@ import os
 import random
 import datetime
 
-from gradio_prompter.sdxl_prompt_constants import prompt_directory
+from sdxl_prompt_constants import prompt_directory
 
 
 def generate_unique_filename():
