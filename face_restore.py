@@ -10,7 +10,7 @@ from torchvision.transforms.functional import normalize
 sys.path.append("CodeFormer")
 
 from basicsr.archs.rrdbnet_arch import RRDBNet
-from basicsr.utils import imwrite, img2tensor, tensor2img
+from basicsr.utils import img2tensor, tensor2img
 from basicsr.utils.realesrgan_utils import RealESRGANer
 from facelib.utils.face_restoration_helper import FaceRestoreHelper
 from facelib.utils.misc import is_gray
@@ -178,10 +178,6 @@ def inference(
                 )
         else:
             restored_img = restored_face
-
-        # save restored img
-        save_path = f"output/out.png"
-        imwrite(restored_img, str(save_path))
 
         restored_img = cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
         return Image.fromarray(restored_img)
