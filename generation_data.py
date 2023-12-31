@@ -15,5 +15,6 @@ class GenerationData(BaseModel):
     upscale_by: float
     base_model: str
     lora: str
+    face_restore: bool
     refiner_model: Optional[str] = None
     refiner_switch: Optional[float] = None

@@ -120,6 +120,7 @@ def create_image_data(
         ("Sharpness", generation_data.sharpness),
         ("Contrast", generation_data.contrast),
         ("Upscaled", generation_data.upscale_by),
+        ("Face Restore", generation_data.face_restore),
     ]
     if generation_data.use_refiner:
         data.extend(
@@ -186,6 +187,19 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
             upscaler_model_path,
         )
 
+    if generation_data.face_restore:
+        logger.info("Restoring faces...")
+        from gradio_prompter.face_restore import inference
+
+        sdxl_output_img = inference(
+            sdxl_output_img,
+            face_align=True,
+            background_enhance=True,
+            face_upsample=True,
+            upscale=1,
+            codeformer_fidelity=0.5,
+        )
+
     sdxl_output_img = enhance(
         sdxl_output_img,
         generation_data.sharpness,
@@ -211,6 +225,7 @@ def generate_image(
     sharpness: float = 0,
     contrast: float = 0,
     upscale_by: float = 1.5,
+    face_restore: bool = False,
 ):
     if seed == -1:
         seed = torch.Generator(device="cuda").seed()
@@ -227,6 +242,7 @@ def generate_image(
         upscale_by=upscale_by,
         base_model=base_model_name,
         lora=base_lora_name,
+        face_restore=face_restore,
     )
     if use_refiner:
         generation_data.refiner_model = refiner_model_name

@@ -347,6 +347,10 @@ def init_ui() -> Blocks:
                                     label="Use Refiner", value=False, interactive=True
                                 )
                             with gr.Row():
+                                face_restore_checkbox = gr.Checkbox(
+                                    label="Face Restore", value=False, interactive=True
+                                )
+                            with gr.Row():
                                 image_data_output = gr.Textbox(
                                     label="Image Data",
                                     lines=10,
@@ -382,6 +386,7 @@ def init_ui() -> Blocks:
                         sharpen_scale,
                         contrast_scale,
                         upscale_by,
+                        face_restore_checkbox,
                     ],
                     outputs=[final_image, image_data_output],
                     api_name="Image_Generate",
