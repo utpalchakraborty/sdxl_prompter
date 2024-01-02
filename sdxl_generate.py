@@ -49,6 +49,8 @@ load_config_kwargs = {
 
 
 def load_pipeline() -> StableDiffusionXLPipeline:
+    logger.info("Clearing cuda cache...")
+    torch.cuda.empty_cache()
     logger.info("Loading pipeline...")
     sdxl_pipe = StableDiffusionXLPipeline.from_single_file(
         sdxl_model_path,
@@ -189,7 +191,7 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
 
     if generation_data.face_restore:
         logger.info("Restoring faces...")
-        from gradio_prompter.face_restore import inference
+        from face_restore import inference
 
         sdxl_output_img = inference(
             sdxl_output_img,

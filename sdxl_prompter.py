@@ -113,7 +113,7 @@ def change_tab_to_llm(prompt: str):
 
 def init_ui() -> Blocks:
     with gr.Blocks(title="SDXL Prompter", theme="gstaff/xkcd") as demo:
-        gr.Markdown("Welcome to the SDXL Prompt Generator!")
+        gr.Markdown("Welcome to the SDXL Prompt & Image Generator!")
         with gr.Tabs() as tabs:
             with gr.TabItem("Generate Prompt", id=0):
                 # set up the main prompt data
