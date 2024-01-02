@@ -27,6 +27,7 @@ base_model_name = os.path.basename(sdxl_model_path)
 refiner_model_name = os.path.basename(refiner_model_path)
 base_lora_name = os.path.basename(lora_path)
 refiner_cfg = 3.5
+refiner_switch_at = 0.8
 
 cache_dir = None
 force_download = False
@@ -35,7 +36,6 @@ proxies = "proxies"
 token = "token"
 local_files_only = False
 revision = None
-
 
 load_config_kwargs = {
     "cache_dir": cache_dir,
@@ -56,20 +56,34 @@ def load_pipeline() -> StableDiffusionXLPipeline:
         sdxl_model_path,
         torch_dtype=torch.float16,
         use_safetensors=True,
+        extract_ema=True,
     ).to("cuda")
     logger.info("Loading Lora weights...")
     sdxl_pipe.load_lora_weights(lora_path)
     return sdxl_pipe
 
 
-def load_refiner() -> StableDiffusionXLImg2ImgPipeline:
+def load_refiner(base_pipeline: StableDiffusionXLPipeline) -> StableDiffusionXLImg2ImgPipeline:
     logger.info("Loading refiner...")
+
+    # Returns:
+    # vae
+    # text_encoder
+    # text_encoder_2
+    # tokenizer
+    # tokenizer_2
+    # unet
+    # scheduler
+
     refiner_pipe = StableDiffusionXLImg2ImgPipeline.from_single_file(
         refiner_model_path,
         torch_dtype=torch.float16,
+        text_encoder_2=base_pipeline.components["text_encoder_2"],
         variant="fp16",
         use_safetensors=True,
         load_safety_checker=False,
+        extract_ema=True,
+        vae=base_pipeline.components["vae"]
     ).to("cuda")
 
     return refiner_pipe
@@ -91,7 +105,7 @@ def enhance(img: PIL.Image, sharpness: float, contrast: float) -> PIL.Image:
 
 
 def create_image_data(
-    generation_data: GenerationData,
+        generation_data: GenerationData,
 ) -> list[tuple[str, str]]:
     # d = [
 
@@ -146,7 +160,7 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
         logger.info("Loading upscaler...")
         upscaler = UpscalerESRGAN()
     if generation_data.use_refiner and refiner_pipeline is None:
-        refiner_pipeline = load_refiner()
+        refiner_pipeline = load_refiner(pipeline)
 
     logger.info("Generating image...")
     sdxl_output = pipeline(
@@ -174,11 +188,10 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
             negative_prompt=generation_data.negative_prompt,
             strength=0.3,
             guidance_scale=refiner_cfg,
-            latents=sdxl_output_img,
             generator=generator,
             num_inference_steps=refiner_steps,
             output_type="pil",
-            vae=True,
+            vae=pipeline.components["vae"]
         ).images[0]
 
     if generation_data.upscale_by > 1:
@@ -218,16 +231,16 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
 
 
 def generate_image(
-    prompt: str,
-    negative_prompt: str = None,
-    guidance_scale: float = 7.0,
-    num_inference_steps: int = 50,
-    seed: int = -1,
-    use_refiner: bool = False,
-    sharpness: float = 0,
-    contrast: float = 0,
-    upscale_by: float = 1.5,
-    face_restore: bool = False,
+        prompt: str,
+        negative_prompt: str = None,
+        guidance_scale: float = 7.0,
+        num_inference_steps: int = 50,
+        seed: int = -1,
+        use_refiner: bool = False,
+        sharpness: float = 0,
+        contrast: float = 0,
+        upscale_by: float = 1.5,
+        face_restore: bool = False,
 ):
     if seed == -1:
         seed = torch.Generator(device="cuda").seed()
@@ -248,7 +261,7 @@ def generate_image(
     )
     if use_refiner:
         generation_data.refiner_model = refiner_model_name
-        generation_data.refiner_switch = refiner_cfg
+        generation_data.refiner_switch = refiner_switch_at
     else:
         generation_data.refiner_model = None
         generation_data.refiner_switch = None
