@@ -75,8 +75,8 @@ def load_refiner(base_pipeline: StableDiffusionXLPipeline) -> StableDiffusionXLI
     # unet
     # scheduler
 
-    refiner_pipe = StableDiffusionXLImg2ImgPipeline.from_single_file(
-        refiner_model_path,
+    refiner_pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+        "stabilityai/stable-diffusion-xl-refiner-1.0",
         torch_dtype=torch.float16,
         text_encoder_2=base_pipeline.components["text_encoder_2"],
         variant="fp16",
@@ -179,9 +179,6 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
     if generation_data.use_refiner:
         logger.info("Refining image...")
         global refiner_cfg
-        refiner_steps = math.ceil(
-            generation_data.num_inference_steps * (1 - generation_data.refiner_switch)
-        )
         sdxl_output_img = refiner_pipeline(
             prompt=generation_data.prompt,
             image=sdxl_output_img,
@@ -189,8 +186,9 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
             strength=0.3,
             guidance_scale=refiner_cfg,
             generator=generator,
-            num_inference_steps=refiner_steps,
+            num_inference_steps=generation_data.num_inference_steps,
             output_type="pil",
+            denoising_start=generation_data.refiner_switch,
             vae=pipeline.components["vae"]
         ).images[0]
 
