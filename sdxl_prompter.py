@@ -343,9 +343,17 @@ def init_ui() -> Blocks:
                                     label="Seed", value=-1, precision=0
                                 )
                             with gr.Row():
-                                use_refiner_checkbox = gr.Checkbox(
-                                    label="Use Refiner", value=False, interactive=True
-                                )
+                                with gr.Group():
+                                    use_refiner_checkbox = gr.Checkbox(
+                                        label="Use Refiner", value=False, interactive=True
+                                    )
+                                    refiner_switch_at = gr.Slider(
+                                        label="Refiner Switch at",
+                                        minimum=0.5,
+                                        maximum=1.0,
+                                        step=0.1,
+                                        value=0.8,
+                                    )
                             with gr.Row():
                                 face_restore_checkbox = gr.Checkbox(
                                     label="Face Restore", value=False, interactive=True
@@ -387,6 +395,7 @@ def init_ui() -> Blocks:
                         contrast_scale,
                         upscale_by,
                         face_restore_checkbox,
+                        refiner_switch_at
                     ],
                     outputs=[final_image, image_data_output],
                     api_name="Image_Generate",

@@ -1,4 +1,3 @@
-import math
 import os
 
 import PIL
@@ -27,7 +26,6 @@ base_model_name = os.path.basename(sdxl_model_path)
 refiner_model_name = os.path.basename(refiner_model_path)
 base_lora_name = os.path.basename(lora_path)
 refiner_cfg = 3.5
-refiner_switch_at = 0.8
 
 cache_dir = None
 force_download = False
@@ -63,7 +61,9 @@ def load_pipeline() -> StableDiffusionXLPipeline:
     return sdxl_pipe
 
 
-def load_refiner(base_pipeline: StableDiffusionXLPipeline) -> StableDiffusionXLImg2ImgPipeline:
+def load_refiner(
+        base_pipeline: StableDiffusionXLPipeline,
+) -> StableDiffusionXLImg2ImgPipeline:
     logger.info("Loading refiner...")
 
     # Returns:
@@ -83,7 +83,7 @@ def load_refiner(base_pipeline: StableDiffusionXLPipeline) -> StableDiffusionXLI
         use_safetensors=True,
         load_safety_checker=False,
         extract_ema=True,
-        vae=base_pipeline.components["vae"]
+        vae=base_pipeline.components["vae"],
     ).to("cuda")
 
     return refiner_pipe
@@ -189,7 +189,7 @@ def run_sdxl_pipelines(generation_data: GenerationData) -> list[PIL.Image]:
             num_inference_steps=generation_data.num_inference_steps,
             output_type="pil",
             denoising_start=generation_data.refiner_switch,
-            vae=pipeline.components["vae"]
+            vae=pipeline.components["vae"],
         ).images[0]
 
     if generation_data.upscale_by > 1:
@@ -239,6 +239,7 @@ def generate_image(
         contrast: float = 0,
         upscale_by: float = 1.5,
         face_restore: bool = False,
+        refiner_switch_at: float = 0.8,
 ):
     if seed == -1:
         seed = torch.Generator(device="cuda").seed()
